@@ -32,6 +32,7 @@ func HandleGitPull(w http.ResponseWriter, req *http.Request) {
 
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
+		log.Printf("ioutil.Readall failed: %s\n", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -39,20 +40,22 @@ func HandleGitPull(w http.ResponseWriter, req *http.Request) {
 	if keystring, ok := os.LookupEnv("WEBHOOK_SECRET"); ok {
 		sig := req.Header.Get("X-Hub-Signature")
 		if !strings.HasPrefix(sig, "sha1=") {
+			log.Printf("Missing signature\n")
 			w.WriteHeader(http.StatusForbidden)
 			fmt.Fprintf(w, "Missing signature\n")
 			return
 		}
 		sigmac, err := hex.DecodeString(sig[5:])
 		if err != nil {
+			log.Printf("Invalid signature: %s\n", err)
 			w.WriteHeader(http.StatusForbidden)
 			fmt.Fprintf(w, "Invalid signature\n")
 			return
 		}
-		key := []byte(keystring)
-		mac := hmac.New(sha1.New, key)
+		mac := hmac.New(sha1.New, []byte(keystring))
 		mac.Write(body)
 		if !hmac.Equal(sigmac, mac.Sum(nil)) {
+			log.Printf("Bad signature: Expected %x, got %x\n", mac.Sum(nil), sigmac)
 			w.WriteHeader(http.StatusForbidden)
 			fmt.Fprintf(w, "Bad signature\n")
 			return
@@ -61,20 +64,23 @@ func HandleGitPull(w http.ResponseWriter, req *http.Request) {
 
 	var payload GitPullPayload
 	if err := json.Unmarshal(body, &payload); err != nil {
+		log.Printf("Invalid JSON: %s\n", err)
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "Invalid JSON\n")
 		return
 	}
 	if payload.Ref == "refs/heads/gh-pages" {
 		cmd := exec.Command("/bin/sh", "-c", "git fetch origin gh-pages && git reset --hard FETCH_HEAD")
-		cmd.Dir = "/srv/www/Git"
+		cmd.Dir = workDir
 		if err := cmd.Start(); err != nil {
+			log.Printf("exec.Command failed: %s\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintf(w, "Webhook failed\n")
 		} else {
 			fmt.Fprintf(w, "OK\n")
 		}
 	} else {
+		log.Printf("Ignoring ref %s\n", payload.Ref)
 		fmt.Fprintf(w, "Not interested in this ref\n")
 	}
 }
@@ -86,6 +92,11 @@ func init() {
 
 func main() {
 	flag.Parse()
+	// $INVOCATION_ID is set by systemd v232+
+	if _, ok := os.LookupEnv("INVOCATION_ID"); ok {
+		log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
+	}
+
 	http.HandleFunc("/webhook/github/pull", HandleGitPull)
 	log.Fatal(http.ListenAndServe(listenPort, nil))
 }
