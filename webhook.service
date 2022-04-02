@@ -5,7 +5,7 @@ StartLimitIntervalSec=1
 [Service]
 Type=simple
 Environment=WEBHOOK_SECRET=secret
-ExecStart=/usr/local/bin/webhook-go -l 127.0.0.1:8001 -c /srv/www/help
+ExecStart=/usr/local/bin/webhook-go -l 127.0.0.1:8001 -c /srv/www/help -p /webhook/github/pull
 Restart=on-failure
 RestartSec=3
 

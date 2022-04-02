@@ -22,6 +22,7 @@ type GitPullPayload struct {
 var (
 	listenPort string
 	workDir    string
+	urlPath    string
 )
 
 func HandleGitPull(w http.ResponseWriter, req *http.Request) {
@@ -88,6 +89,7 @@ func HandleGitPull(w http.ResponseWriter, req *http.Request) {
 func init() {
 	flag.StringVar(&listenPort, "l", "127.0.0.1:8001", "listen address and port")
 	flag.StringVar(&workDir, "c", "/var/www/html", "git repo location")
+	flag.StringVar(&urlPath, "p", "/webhook/github/pull", "url path")
 }
 
 func main() {
@@ -97,6 +99,6 @@ func main() {
 		log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
 	}
 
-	http.HandleFunc("/webhook/github/pull", HandleGitPull)
+	http.HandleFunc(urlPath, HandleGitPull)
 	log.Fatal(http.ListenAndServe(listenPort, nil))
 }
