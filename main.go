@@ -6,8 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"flag"
-	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -31,7 +30,7 @@ func HandleGitPull(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	body, err := ioutil.ReadAll(req.Body)
+	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		log.Printf("ioutil.Readall failed: %s\n", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -42,23 +41,20 @@ func HandleGitPull(w http.ResponseWriter, req *http.Request) {
 		sig := req.Header.Get("X-Hub-Signature")
 		if !strings.HasPrefix(sig, "sha1=") {
 			log.Printf("Missing signature\n")
-			w.WriteHeader(http.StatusForbidden)
-			fmt.Fprintf(w, "Missing signature\n")
+			http.Error(w, "Missing signature\n", http.StatusForbidden)
 			return
 		}
 		sigmac, err := hex.DecodeString(sig[5:])
 		if err != nil {
 			log.Printf("Invalid signature: %s\n", err)
-			w.WriteHeader(http.StatusForbidden)
-			fmt.Fprintf(w, "Invalid signature\n")
+			http.Error(w, "Invalid signature\n", http.StatusForbidden)
 			return
 		}
 		mac := hmac.New(sha1.New, []byte(keystring))
 		mac.Write(body)
 		if !hmac.Equal(sigmac, mac.Sum(nil)) {
 			log.Printf("Bad signature: Expected %x, got %x\n", mac.Sum(nil), sigmac)
-			w.WriteHeader(http.StatusForbidden)
-			fmt.Fprintf(w, "Bad signature\n")
+			http.Error(w, "Bad signature\n", http.StatusForbidden)
 			return
 		}
 	}
@@ -66,8 +62,7 @@ func HandleGitPull(w http.ResponseWriter, req *http.Request) {
 	var payload GitPullPayload
 	if err := json.Unmarshal(body, &payload); err != nil {
 		log.Printf("Invalid JSON: %s\n", err)
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "Invalid JSON\n")
+		http.Error(w, "Invalid JSON\n", http.StatusBadRequest)
 		return
 	}
 	if payload.Ref == "refs/heads/gh-pages" {
@@ -75,14 +70,14 @@ func HandleGitPull(w http.ResponseWriter, req *http.Request) {
 		cmd.Dir = workDir
 		if err := cmd.Start(); err != nil {
 			log.Printf("exec.Command failed: %s\n", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "Webhook failed\n")
+			http.Error(w, "Webhook failed\n", http.StatusInternalServerError)
 		} else {
-			fmt.Fprintf(w, "OK\n")
+			defer cmd.Wait()
+			http.Error(w, "OK\n", http.StatusOK)
 		}
 	} else {
 		log.Printf("Ignoring ref %s\n", payload.Ref)
-		fmt.Fprintf(w, "Not interested in this ref\n")
+		http.Error(w, "Not interested in this ref\n", http.StatusOK)
 	}
 }
 
