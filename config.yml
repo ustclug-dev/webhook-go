@@ -1,0 +1,9 @@
+listen-address: ":8080"
+path-prefix: /webhook/
+hooks:
+  - url-path: /a
+    working-directory: /tmp/a
+    command: # optional, defaults to an equivalent of "git pull"
+    branch: # optional, defaults to "master"
+    secret: # optional
+    wait: true # wait for command to complete
