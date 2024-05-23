@@ -177,7 +177,7 @@ func loadConfig(path string) (*Config, error) {
 	case ".yaml", ".yml":
 		return loadConfigYAML(path)
 	default:
-		return nil, fmt.Errorf("Unknown config file format: %s", path)
+		return nil, fmt.Errorf("unknown config file format: %s", path)
 	}
 }
 
@@ -204,9 +204,6 @@ func main() {
 		h := NewHook(hook)
 		mux.Handle(hook.URLPath, h)
 	}
-	handler := http.Handler(mux)
-	if config.PathPrefix != "" {
-		handler = http.StripPrefix(config.PathPrefix, handler)
-	}
+	handler := http.StripPrefix(config.PathPrefix, mux)
 	log.Fatal(http.ListenAndServe(config.ListenAddress, handler))
 }
