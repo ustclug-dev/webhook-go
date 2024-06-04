@@ -37,8 +37,13 @@ type Config struct {
 	Hooks []HookConfig `json:"hooks"`
 }
 
+type GitHubRepository struct {
+	FullName string `json:"full_name"`
+}
+
 type GitHubPayload struct {
-	Ref string `json:"ref"`
+	Ref        string           `json:"ref"`
+	Repository GitHubRepository `json:"repository"`
 }
 
 type HookHandler struct {
@@ -124,7 +129,7 @@ func (h *HookHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if payload.Ref != "refs/heads/"+h.branch {
-		log.Printf("Ignoring ref %s\n", payload.Ref)
+		log.Printf("Ignoring %s from %s\n", payload.Ref, payload.Repository.FullName)
 		http.Error(w, "Not interested in this ref\n", http.StatusOK)
 		return
 	}
