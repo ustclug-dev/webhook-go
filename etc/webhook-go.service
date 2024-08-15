@@ -5,7 +5,7 @@ ConditionPathExists=/etc/webhook-go/config.yml
 
 [Service]
 Type=exec
-ExecStart=/usr/local/bin/webhook-go -config /etc/webhook-go/config.yml
+ExecStart=/usr/bin/webhook-go -config /etc/webhook-go/config.yml
 Restart=on-failure
 RestartSec=3
 
