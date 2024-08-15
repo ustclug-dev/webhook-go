@@ -1,9 +1,10 @@
 [Unit]
-Description=GitHub Webhook
+Description=A simple webhook for GitHub events
 StartLimitIntervalSec=1
+ConditionPathExists=/etc/webhook-go/config.yml
 
 [Service]
-Type=simple
+Type=exec
 ExecStart=/usr/local/bin/webhook-go -config /etc/webhook-go/config.yml
 Restart=on-failure
 RestartSec=3
